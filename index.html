@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>The Ark</title>
+<style>
+:root{--bg:#f6f3ee;--panel:#fff;--ink:#241f1a;--mute:#7a7066;--line:#e5ded3;--acc:#b5651d;--me:#f3e2cc;--them:#f0ece6;--danger:#c0392b;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#17140f;--panel:#211d17;--ink:#f1ebe2;--mute:#9b9084;--line:#352f26;--me:#4a3418;--them:#2c2720;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#17140f;--panel:#211d17;--ink:#f1ebe2;--mute:#9b9084;--line:#352f26;--me:#4a3418;--them:#2c2720;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font:15px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif;overflow:hidden}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer;background:none;border:0}
+#app{display:flex;height:100%}
+#side{width:260px;background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;flex-shrink:0}
+#side h1{margin:0;padding:14px 16px;font-size:18px;display:flex;align-items:center;gap:8px}
+#list{flex:1;overflow:auto;padding:4px 8px}
+.sec{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--mute);padding:10px 8px 4px}
+.item{display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:8px;width:100%;text-align:left}
+.item:hover,.item.on{background:var(--them)}
+.av{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:600;font-size:13px;flex-shrink:0}
+.item .n{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tag{font-size:10px;padding:1px 6px;border-radius:9px;background:var(--acc);color:#fff}
+.tag.m{background:var(--mute)}.tag.k{background:var(--danger)}
+.dots{opacity:.5;padding:0 6px}
+#me{border-top:1px solid var(--line);padding:10px;display:flex;align-items:center;gap:8px}
+#main{flex:1;display:flex;flex-direction:column;min-width:0}
+#head{padding:12px 16px;background:var(--panel);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;font-weight:600}
+#burger{display:none;font-size:20px}
+#msgs{flex:1;overflow:auto;padding:14px 16px;display:flex;flex-direction:column;gap:6px}
+.m{max-width:min(520px,82%);display:flex;flex-direction:column;align-self:flex-start}
+.m.mine{align-self:flex-end;align-items:flex-end}
+.who{font-size:12px;color:var(--mute);margin:0 4px 2px}
+.b{background:var(--them);padding:8px 12px;border-radius:14px;word-wrap:break-word;overflow-wrap:anywhere;position:relative}
+.mine .b{background:var(--me)}
+.b img{max-width:100%;max-height:300px;border-radius:8px;display:block}
+.b audio{max-width:100%;height:36px}
+.b a{color:var(--acc)}
+.del{font-size:11px;color:var(--mute);margin:2px 4px;opacity:.7}
+.compact .b{padding:4px 10px}.compact #msgs{gap:2px}
+#bar{display:flex;gap:6px;align-items:center;padding:10px;background:var(--panel);border-top:1px solid var(--line)}
+#txt{flex:1;border:1px solid var(--line);background:var(--bg);border-radius:20px;padding:9px 14px;outline:0;min-width:0}
+.ic{width:38px;height:38px;border-radius:50%;font-size:18px;flex-shrink:0}
+.ic:hover{background:var(--them)}
+#send{background:var(--acc);color:#fff}
+.rec{background:var(--danger)!important;color:#fff}
+#ov{position:fixed;inset:0;background:#0008;display:none;place-items:center;z-index:20;padding:16px}
+#ov.on{display:grid}
+.card{background:var(--panel);border-radius:14px;padding:18px;width:min(380px,100%);max-height:90%;overflow:auto}
+.card h2{margin:0 0 12px;font-size:17px}
+.card label{display:block;font-size:13px;color:var(--mute);margin:10px 0 4px}
+.card input[type=text],.card input[type=password]{width:100%;border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:8px}
+.card select{width:100%;border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:8px}
+.row{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
+.btn{padding:8px 14px;border-radius:8px;background:var(--them)}.btn.p{background:var(--acc);color:#fff}.btn.d{background:var(--danger);color:#fff}
+.sw{display:flex;gap:6px;flex-wrap:wrap}.sw button{width:26px;height:26px;border-radius:50%;border:2px solid transparent}.sw button.on{border-color:var(--ink)}
+video{width:100%;border-radius:10px;background:#000}
+#msgs.hasbg .who{background:var(--panel);padding:1px 8px;border-radius:9px;width:fit-content}
+#call{position:fixed;inset:0;background:#111;color:#fff;z-index:40;display:none;flex-direction:column;align-items:center;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}#call.on{display:flex}
+#rv{width:100%;flex:1;min-height:0;object-fit:cover;background:#000}#lv{position:absolute;right:12px;top:calc(12px + env(safe-area-inset-top,0px));width:110px;border-radius:10px;background:#222;transform:scaleX(-1);display:none}
+#cinfo{position:absolute;top:28%;text-align:center}#cav{display:flex;justify-content:center;margin-bottom:10px}#cname{font-size:20px;font-weight:600}#cstat{opacity:.7;margin-top:4px}
+#cbar{display:flex;gap:16px;padding:16px}#cbar .ic{width:54px;height:54px;font-size:22px;background:#333;color:#fff}
+#toast{position:fixed;left:50%;bottom:80px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:8px 14px;border-radius:20px;display:none;z-index:30}
+.center{height:100%;display:grid;place-items:center;text-align:center;padding:24px}
+@media(max-width:700px){#side{position:fixed;inset:0 auto 0 0;z-index:10;transform:translateX(-100%);transition:.2s;width:80%;padding-top:env(safe-area-inset-top,0px)}#side.open{transform:none}#burger{display:block}}
+</style></head><body>
+<div id="boot" class="center"><div><div style="font-size:48px">🛶</div><h2>The Ark</h2><p style="color:var(--mute)" id="bootmsg">Loading…</p></div></div>
+<div id="app" style="display:none">
+<aside id="side"><h1>🛶 The Ark</h1><div id="list"></div><div id="me"></div></aside>
+<section id="main">
+<div id="head"><button id="burger" aria-label="Menu">☰</button><span id="title"></span><span style="margin-left:auto;display:flex;gap:2px"><button class="ic" id="bVoice" title="Voice call" style="display:none">📞</button><button class="ic" id="bVideo" title="Video call" style="display:none">🎥</button><button class="ic" id="bBg" title="Change chat background" style="display:none">🎨</button></span></div>
+<div id="msgs"></div>
+<div id="bar">
+<button class="ic" id="bAtt" title="Send image or file">📎</button>
+<button class="ic" id="bCam" title="Camera">📷</button>
+<input id="txt" placeholder="Message" autocomplete="off">
+<button class="ic" id="bMic" title="Voice message">🎤</button>
+<button class="ic" id="send" title="Send">➤</button>
+<input type="file" id="file" hidden><input type="file" id="camf" accept="image/*" capture="environment" hidden>
+</div></section></div>
+<div id="call"><video id="rv" autoplay playsinline></video><video id="lv" autoplay playsinline muted></video><div id="cinfo"><div id="cav"></div><div id="cname"></div><div id="cstat"></div></div><div id="cbar"><button class="ic" id="cMic" title="Mute microphone">🎤</button><button class="ic" id="cCam" title="Camera on/off">📷</button><button class="ic rec" id="cEnd" title="Hang up">📞</button></div></div>
+<div id="ov"><div class="card" id="card"></div></div><div id="toast"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="config.js"></script>
+<script>
+const COLS=["#b5651d","#2e7d6b","#4a6fa5","#a0457a","#7a5fb5","#c0392b","#5b7a2e","#555"];
+const $=id=>document.getElementById(id);
+let db,assets,me,myId,room="general",unsub=null,P={},ADM={},MOD={},MSGS=[],isOwner=false,S={},CFG={},CID=null,SESS=null;
+try{S=JSON.parse(localStorage.getItem("ark-s")||"{}")}catch(e){}
+S={theme:"auto",sound:true,enter:true,compact:false,...S};
+function save(){try{localStorage.setItem("ark-s",JSON.stringify(S))}catch(e){}applyS()}
+function applyS(){const r=document.documentElement;S.theme==="auto"?r.removeAttribute("data-theme"):r.setAttribute("data-theme",S.theme);document.body.classList.toggle("compact",S.compact)}
+applyS();
+function toast(t){const e=$("toast");e.textContent=t;e.style.display="block";clearTimeout(toast.t);toast.t=setTimeout(()=>e.style.display="none",2800)}
+function el(tag,cls,txt){const e=document.createElement(tag);if(cls)e.className=cls;if(txt!=null)e.textContent=txt;return e}
+const isAdmin=id=>id===ownerId||!!ADM[id];let ownerId=null;
+const name=id=>(P[id]&&P[id].name)||"Someone";const nick=id=>(P[id]&&P[id].nick)?"@"+P[id].nick:"";
+function avatar(id,sz){const p=P[id]||{};const a=el("div","av",(name(id)[0]||"?").toUpperCase());a.style.background=p.color||COLS[0];if(sz){a.style.width=a.style.height=sz+"px"}return a}
+
+let sb,ch,RECOV=false;
+/* ---- Supabase data layer: maps the app's collections onto SQL tables ---- */
+const MAP={
+ profiles:{t:"profiles",pk:"id"},
+ admins:{t:"roles",pk:"user_id",out:r=>({role:r.role}),inn:()=>({role:"admin"})},
+ mod:{t:"mods",pk:"user_id",out:r=>({muted:r.muted,kicked:r.kicked}),inn:d=>({muted:!!d.muted,kicked:!!d.kicked})},
+ config:{t:"config",pk:"id",out:r=>({bg:r.bg}),inn:d=>({bg:d.bg||""})},
+ msgs:{t:"messages",pk:"id",ins:1,out:r=>({room:r.room,from:r.sender,t:Number(r.t),kind:r.kind,text:r.text,url:r.url,name:r.name}),inn:d=>({room:d.room,sender:d.from,t:d.t,kind:d.kind,text:d.text||null,url:d.url||null,name:d.name||null})}
+};
+const PROF=["name","color","status","first","last","nick","joined"];
+const dout=(m,r)=>m.out?m.out(r):(({id,...x})=>x)(r);
+const din=(m,d)=>{if(m.inn)return m.inn(d);const o={};PROF.forEach(k=>{if(k in d)o[k]=d[k]});return o};
+function coll(n){const m=MAP[n],q={};const api={
+ doc:id=>({
+  async get(){const {data}=await sb.from(m.t).select("*").eq(m.pk,id).maybeSingle();return{exists:!!data,data:()=>data?dout(m,data):undefined}},
+  async set(d){const row={[m.pk]:id,...din(m,d)};const {error}=m.ins?await sb.from(m.t).insert(row):await sb.from(m.t).upsert(row);if(error)throw error},
+  async update(d){const {error}=await sb.from(m.t).update(din(m,d)).eq(m.pk,id);if(error)throw error},
+  async delete(){const {error}=await sb.from(m.t).delete().eq(m.pk,id);if(error)throw error}}),
+ where(f,o,v){q.w=[f,v];return api},orderBy(f,d){q.o=[f,d];return api},limit(k){q.l=k;return api},
+ onSnapshot(next,err){
+  const rows=new Map(),emit=()=>next({docs:[...rows].map(([id,d])=>({id,data:()=>d}))});
+  let qb=sb.from(m.t).select("*");if(q.w)qb=qb.eq(q.w[0],q.w[1]);if(q.o)qb=qb.order(q.o[0],{ascending:q.o[1]!=="desc"});if(q.l)qb=qb.limit(q.l);
+  qb.then(({data,error})=>{if(error){if(err)err(error);return}data.forEach(r=>rows.set(String(r[m.pk]),dout(m,r)));emit()});
+  const chn=sb.channel("c"+Math.random().toString(36).slice(2)).on("postgres_changes",{event:"*",schema:"public",table:m.t},p=>{
+   if(p.eventType==="DELETE"){if(rows.delete(String(p.old[m.pk])))emit();return}
+   if(q.w&&p.new[q.w[0]]!==q.w[1])return;
+   rows.set(String(p.new[m.pk]),dout(m,p.new));emit()}).subscribe();
+  return()=>sb.removeChannel(chn)}};
+ return api}
+function mkAssets(){return{async upload(f){
+ const ext=((f.type||"").split(";")[0].split("/")[1]||"bin").replace(/[^a-z0-9]/gi,"").slice(0,8)||"bin";
+ const p=myId+"/"+Date.now()+Math.random().toString(36).slice(2,8)+"."+ext;
+ const {error}=await sb.storage.from("media").upload(p,f,{contentType:f.type||"application/octet-stream"});if(error)throw error;
+ return{url:sb.storage.from("media").getPublicUrl(p).data.publicUrl,id:p}}}}
+function mkRoom(){ch=sb.channel("ark-calls",{config:{broadcast:{self:false}}});
+ return{emit:(topic,data)=>ch.send({type:"broadcast",event:topic,payload:data}).then(()=>{}),
+  on:(topic,fn)=>{ch.on("broadcast",{event:topic},p=>fn({isMe:false,data:p.payload}))}}}
+
+/* ---- Accounts (Supabase Auth) ---- */
+function signOut(){sb.auth.signOut().then(()=>location.reload())}
+function delAcct(e){const b=e.currentTarget;if(!b.dataset.s){b.dataset.s=1;b.textContent="Tap again to confirm";return}
+ sb.rpc("delete_my_account").then(({error})=>{if(error)return toast(/owner/.test(error.message)?"The owner can’t delete their account":"Couldn’t delete the account");signOut()})}
+function authScreen(){
+ return new Promise(res=>{
+  let mode="in",note="";
+  const draw=()=>modal(c=>{
+   c.append(el("h2",null,mode==="in"?"Sign in to The Ark":"Create your account"));
+   let fn,ln,nk;if(mode==="up"){const mk=(l,ac,ph)=>{const i=el("input");i.type="text";i.maxLength=30;i.autocomplete=ac;if(ph)i.placeholder=ph;field(c,l,i);return i};fn=mk("First name","given-name");ln=mk("Last name","family-name");nk=mk("Nickname","username","e.g. kpsilbor");nk.maxLength=20}
+   const em=el("input");em.type="text";em.autocomplete="email";em.inputMode="email";em.placeholder="you@example.com";field(c,"Email",em);
+   const pw=el("input");pw.type="password";pw.autocomplete=mode==="in"?"current-password":"new-password";field(c,"Password",pw);
+   let p2;if(mode==="up"){p2=el("input");p2.type="password";p2.autocomplete="new-password";field(c,"Confirm password",p2)}
+   const msg=el("p","who",note);msg.style.color=note?"var(--ink)":"var(--danger)";note="";c.append(msg);
+   if(mode==="in"){const fg=el("button","who","Forgot password?");fg.style.cssText="text-decoration:underline;margin-bottom:4px";
+    fg.onclick=async()=>{const e=em.value.trim();msg.style.color="var(--danger)";if(!e)return msg.textContent="Enter your email above first";
+     const {error}=await sb.auth.resetPasswordForEmail(e,{redirectTo:location.href.split("#")[0]});msg.style.color="var(--ink)";msg.textContent=error?error.message:"Check your email for a reset link."};c.append(fg)}
+   const r=el("div","row"),sw=el("button","btn",mode==="in"?"Create account":"I have an account"),go=el("button","btn p",mode==="in"?"Sign in":"Sign up");
+   sw.onclick=()=>{mode=mode==="in"?"up":"in";draw()};
+   go.onclick=async()=>{
+    const e=em.value.trim().toLowerCase();msg.style.color="var(--danger)";msg.textContent="";
+    if(!/^\S+@\S+\.\S+$/.test(e))return msg.textContent="Enter a valid email address";
+    go.disabled=true;
+    try{
+     if(mode==="in"){const {error}=await sb.auth.signInWithPassword({email:e,password:pw.value});if(error)throw error.message}
+     else{
+      const first=fn.value.trim(),last=ln.value.trim(),nick=nk.value.trim();
+      if(!first||!last)throw"Enter your first and last name";
+      if(!/^[A-Za-z0-9._]{3,20}$/.test(nick))throw"Nickname: 3 to 20 characters, using letters, numbers, . or _";
+      if(pw.value.length<8)throw"Use at least 8 characters";
+      if(pw.value!==p2.value)throw"Passwords don’t match";
+      const {data:free}=await sb.rpc("nick_available",{n:nick});if(free===false)throw"That nickname is already taken";
+      const {data,error}=await sb.auth.signUp({email:e,password:pw.value,options:{data:{first,last,nick},emailRedirectTo:location.href.split("#")[0]}});
+      if(error)throw error.message;
+      if(!data.session){mode="in";note="Account created. Check your email to confirm it, then sign in.";return draw()}
+     }
+     closeM();res();
+    }catch(x){msg.textContent=typeof x==="string"?x:"Something went wrong. Please try again.";go.disabled=false}};
+   c.onkeydown=ev=>{if(ev.key==="Enter")go.click()};
+   r.append(sw,go);c.append(r);setTimeout(()=>em.focus(),50)});
+  draw()})}
+function emailModal(){modal(c=>{c.append(el("h2",null,"Change email"));
+ const ne=el("input");ne.type="text";ne.autocomplete="email";ne.placeholder="new@example.com";field(c,"New email",ne);
+ const pw=el("input");pw.type="password";pw.autocomplete="current-password";field(c,"Current password",pw);
+ const msg=el("p","who","");msg.style.color="var(--danger)";c.append(msg);
+ const r=el("div","row"),cx=el("button","btn","Cancel"),s=el("button","btn p","Update");cx.onclick=settings;
+ s.onclick=async()=>{try{const e=ne.value.trim().toLowerCase();
+  if(!/^\S+@\S+\.\S+$/.test(e))throw"Enter a valid email address";
+  const a=await sb.auth.signInWithPassword({email:SESS.email,password:pw.value});if(a.error)throw"Password is incorrect";
+  const {error}=await sb.auth.updateUser({email:e},{emailRedirectTo:location.href.split("#")[0]});if(error)throw error.message;
+  toast("Confirmation sent. Click the link in your new inbox to finish.");closeM()}
+  catch(x){msg.textContent=typeof x==="string"?x:"Something went wrong"}};
+ r.append(cx,s);c.append(r)})}
+function pwModal(){modal(c=>{c.append(el("h2",null,"Change password"));
+ const mk=(l,ac)=>{const i=el("input");i.type="password";i.autocomplete=ac;field(c,l,i);return i};
+ const o=RECOV?null:mk("Current password","current-password"),n=mk("New password (8+ characters)","new-password"),n2=mk("Confirm new password","new-password");
+ const msg=el("p","who","");msg.style.color="var(--danger)";c.append(msg);
+ const r=el("div","row"),cx=el("button","btn","Cancel"),s=el("button","btn p","Update");cx.onclick=settings;
+ s.onclick=async()=>{try{
+  if(n.value.length<8)throw"Use at least 8 characters";if(n.value!==n2.value)throw"Passwords don’t match";
+  if(o){const a=await sb.auth.signInWithPassword({email:SESS.email,password:o.value});if(a.error)throw"Current password is incorrect"}
+  const {error}=await sb.auth.updateUser({password:n.value});if(error)throw error.message;
+  RECOV=false;toast("Password updated");closeM()}
+  catch(x){msg.textContent=typeof x==="string"?x:"Something went wrong"}};
+ r.append(cx,s);c.append(r)})}
+
+async function init(){
+ if(!window.ARK||!ARK.url||/YOUR-PROJECT/.test(ARK.url)){$("bootmsg").textContent="Setup needed: add your Supabase URL and key to config.js";return}
+ sb=supabase.createClient(ARK.url,ARK.key);db={collection:coll};assets=mkAssets();RM=mkRoom();
+ sb.auth.onAuthStateChange(ev=>{if(ev==="PASSWORD_RECOVERY")RECOV=true});
+ let {data:{session}}=await sb.auth.getSession();
+ if(!session){$("bootmsg").textContent="Please sign in to continue";await authScreen();session=(await sb.auth.getSession()).data.session}
+ myId=session.user.id;SESS={email:session.user.email};
+ const watch=(c,f)=>new Promise(res=>db.collection(c).onSnapshot(s=>{const o={};s.docs.forEach(d=>o[d.id]=d.data());f(o);refresh();res()},()=>res()));
+ await Promise.all([watch("profiles",o=>P=o),watch("admins",o=>{ADM=o;ownerId=Object.keys(o).find(k=>o[k].role==="owner")||null;isOwner=myId===ownerId}),watch("mod",o=>MOD=o),watch("config",o=>{CFG=o.chat||{};applyBg()})]);
+ initCalls();ch.subscribe();
+ if(MOD[myId]&&MOD[myId].kicked&&!isAdmin(myId)){$("bootmsg").textContent="You have been removed from The Ark by an admin.";return}
+ if(!P[myId]){$("bootmsg").textContent="Your profile wasn’t found. Please contact the owner.";return}
+ $("boot").style.display="none";$("app").style.display="flex";
+ open(room);bind();
+}
+function modal(build){const c=$("card");c.textContent="";build(c);$("ov").classList.add("on")}
+function closeM(){$("ov").classList.remove("on");$("card").textContent="";stopCam()}
+function field(c,label,node){c.append(el("label",null,label),node);return node}
+function swatches(cur,on){const w=el("div","sw");COLS.forEach(k=>{const b=el("button",k===cur?"on":"");b.style.background=k;b.onclick=()=>{[...w.children].forEach(x=>x.classList.remove("on"));b.classList.add("on");on(k)};w.append(b)});return w}
+function settings(){
+ const p=P[myId]||{};let col=p.color||COLS[0];
+ modal(c=>{c.append(el("h2",null,"Settings"));
+  const n=el("input");n.type="text";n.maxLength=30;n.value=p.name||"";field(c,"Display name",n);
+  const st=el("input");st.type="text";st.maxLength=60;st.value=p.status||"";st.placeholder="What’s on your mind?";field(c,"Status",st);
+  c.append(el("label",null,"Colour"),swatches(col,v=>col=v));
+  const th=el("select");[["auto","Match system"],["light","Light"],["dark","Dark"]].forEach(([v,t])=>{const o=el("option",null,t);o.value=v;th.append(o)});th.value=S.theme;field(c,"Theme",th);
+  const chk=(l,k)=>{const w=el("label");w.style.cssText="display:flex;gap:8px;align-items:center;color:var(--ink)";const i=el("input");i.type="checkbox";i.checked=S[k];i.onchange=()=>{S[k]=i.checked;save()};w.append(i,l);c.append(w)};
+  chk("Notification sound","sound");chk("Press Enter to send","enter");chk("Compact messages","compact");
+  c.append(el("label",null,"Account"));const ae=el("div",null,SESS?SESS.email+(nick(myId)?" · "+nick(myId):""):"");c.append(ae);
+  const ab=(t,cls,fn)=>{const q=el("button","btn "+cls,t);q.style.cssText="margin:6px 6px 0 0";q.onclick=fn;c.append(q)};
+  ab("Change email","",emailModal);ab("Change password","",pwModal);ab("Sign out","",signOut);ab("Delete account","d",delAcct);
+  const r=el("div","row"),x=el("button","btn","Close"),b=el("button","btn p","Save");
+  x.onclick=closeM;b.onclick=async()=>{S.theme=th.value;save();
+   await db.collection("profiles").doc(myId).update({name:n.value.trim()||p.name,status:st.value.trim(),color:col});closeM()};
+  r.append(x,b);c.append(r)});
+}
+function refresh(){if(!$("app").style.display||$("app").style.display==="none")return;list();head();checkKick()}
+function checkKick(){const m=MOD[myId];if(m&&m.kicked&&!isAdmin(myId)){$("app").style.display="none";$("boot").style.display="grid";$("bootmsg").textContent="You have been removed from The Ark by an admin.";}
+ else if($("boot").style.display==="grid"&&P[myId]&&$("bootmsg").textContent.startsWith("You have been")){$("boot").style.display="none";$("app").style.display="flex"}}
+function list(){
+ const L=$("list");L.textContent="";L.append(el("div","sec","Group"));
+ const g=el("button","item"+(room==="general"?" on":""));const ga=el("div","av","#");ga.style.background="var(--acc)";g.append(ga,el("span","n","The Ark"));g.onclick=()=>open("general");L.append(g);
+ L.append(el("div","sec","Direct messages"));
+ Object.keys(P).filter(k=>k!==myId).sort((a,b)=>name(a).localeCompare(name(b))).forEach(k=>{
+  const key=dmKey(k),b=el("button","item"+(room===key?" on":""));
+  const nw=el("span","n");nw.append(name(k));if(nick(k)){const s=el("div","who",nick(k));s.style.margin="0";nw.append(s)}b.append(avatar(k),nw);
+  if(isAdmin(k))b.append(el("span","tag","admin"));
+  if(MOD[k]&&MOD[k].kicked)b.append(el("span","tag k","kicked"));else if(MOD[k]&&MOD[k].muted)b.append(el("span","tag m","muted"));
+  if(isAdmin(myId)){const d=el("span","dots","⋯");d.onclick=e=>{e.stopPropagation();member(k)};b.append(d)}
+  b.onclick=()=>open(key);L.append(b)});
+ const m=$("me");m.textContent="";m.append(avatar(myId,34));const w=el("div");w.style.flex="1";w.style.minWidth="0";
+ w.append(el("div",null,name(myId)),el("div","who",(nick(myId)?nick(myId)+" · ":"")+(isAdmin(myId)?"Admin":"Member")));m.append(w);
+ const s=el("button","ic","⚙️");s.title="Settings";s.onclick=settings;m.append(s);
+}
+const dmKey=k=>"dm_"+[myId,k].sort().join("_");
+function head(){const t=$("title");t.textContent="";$("bBg").style.display=isAdmin(myId)?"":"none";$("bVoice").style.display=$("bVideo").style.display=(room!=="general"&&RM)?"":"none";if(room==="general"){t.textContent="The Ark"}else{const k=Object.keys(P).find(x=>dmKey(x)===room);if(k){t.append(avatar(k,26),el("span",null," "+name(k)+(nick(k)?" ("+nick(k)+")":"")));if(P[k].status)t.append(el("span","who","· "+P[k].status))}}
+ const mm=MOD[myId]&&MOD[myId].muted;$("txt").disabled=mm;$("txt").placeholder=mm?"You are muted by an admin":"Message"}
+function member(k){
+ modal(c=>{c.append(el("h2",null,name(k)+(nick(k)?" "+nick(k):"")));const mod=MOD[k]||{};
+  if(myId===ownerId||isOwner||!isAdmin(k)){const ni=el("input");ni.type="text";ni.maxLength=30;ni.value=name(k);field(c,"Display name",ni);
+  const rb=el("button","btn p","Rename");rb.style.cssText="display:block;width:100%;margin:8px 0 12px";
+  rb.onclick=async()=>{const v=ni.value.trim();if(!v)return toast("Name can’t be empty");try{await db.collection("profiles").doc(k).update({name:v});closeM()}catch(e){toast("Couldn’t rename")}};c.append(rb)}
+  const act=(label,cls,fn)=>{const b=el("button","btn "+cls,label);b.style.cssText="display:block;width:100%;margin:6px 0";b.onclick=async()=>{await fn();closeM()};c.append(b)};
+  if((myId===ownerId||isOwner)&&k!==ownerId)act(ADM[k]?"Remove admin":"Make admin","",()=>ADM[k]?db.collection("admins").doc(k).delete():db.collection("admins").doc(k).set({by:myId,t:Date.now()}));
+  if(!isAdmin(k)){act(mod.muted?"Unmute":"Mute","",()=>db.collection("mod").doc(k).set({...mod,muted:!mod.muted}));
+   act(mod.kicked?"Reinstate":"Kick from The Ark","d",()=>db.collection("mod").doc(k).set({...mod,kicked:!mod.kicked}))}
+  else c.append(el("p","who","Only the owner can rename, mute or kick admins."));
+  const r=el("div","row"),x=el("button","btn","Close");x.onclick=closeM;r.append(x);c.append(r)});
+}
+function open(r){room=r;$("side").classList.remove("open");if(unsub)unsub();MSGS=[];draw(true);list();head();
+ unsub=db.collection("msgs").where("room","==",r).orderBy("t","desc").limit(200).onSnapshot(s=>{
+  const first=!MSGS.length;const prev=MSGS.length;MSGS=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>a.t-b.t);
+  if(MSGS.length>prev&&prev&&MSGS[MSGS.length-1].from!==myId)ping();draw(first)},e=>toast("Couldn’t load messages"));}
+function ping(){if(!S.sound)return;try{const a=new AudioContext(),o=a.createOscillator(),g=a.createGain();o.connect(g);g.connect(a.destination);o.frequency.value=720;g.gain.value=.05;o.start();o.stop(a.currentTime+.12)}catch(e){}}
+function draw(stick){
+ const M=$("msgs");const near=M.scrollHeight-M.scrollTop-M.clientHeight<120;M.textContent="";
+ if(!MSGS.length)M.append(el("p","who","No messages yet. Say hello! 👋"));
+ MSGS.forEach(m=>{
+  if(MOD[m.from]&&MOD[m.from].kicked)return;
+  const mine=m.from===myId,w=el("div","m"+(mine?" mine":""));
+  if(!mine)w.append(el("div","who",name(m.from)+(nick(m.from)?" · "+nick(m.from):"")));
+  const b=el("div","b");
+  if(m.kind==="image"){const i=el("img");i.src=m.url;i.alt=m.name||"image";i.onclick=()=>window.open(m.url,"_blank");b.append(i)}
+  else if(m.kind==="voice"){const a=el("audio");a.controls=true;a.src=m.url;b.append(a)}
+  else if(m.kind==="file"){const a=el("a",null,"📄 "+(m.name||"file"));a.href=m.url;a.target="_blank";a.rel="noopener";b.append(a)}
+  else b.textContent=m.text;
+  w.append(b);
+  if(mine||isAdmin(myId)){const d=el("button","del","delete");d.onclick=()=>db.collection("msgs").doc(m.id).delete();w.append(d)}
+  M.append(w)});
+ if(stick||near)M.scrollTop=M.scrollHeight}
+async function post(o){
+ if(MOD[myId]&&MOD[myId].muted)return toast("You are muted");
+ try{await db.collection("msgs").doc("m"+Date.now().toString(36)+Math.random().toString(36).slice(2,6)).set({room,from:myId,t:Date.now(),...o})}catch(e){toast("Couldn’t send")}}
+async function sendBlob(blob,kind,nm){
+ if(!assets)return toast("Uploads aren’t available for your account");
+ if(MOD[myId]&&MOD[myId].muted)return toast("You are muted");
+ toast("Uploading…");
+ try{const r=await assets.upload(blob);await post({kind,url:r.url,aid:r.id,name:nm||""});$("toast").style.display="none"}catch(e){toast("Upload failed (max 20 MB)")}}
+function sendText(){const v=$("txt").value.trim();if(!v)return;$("txt").value="";post({kind:"text",text:v})}
+let stream=null,rec=null,chunks=[];
+function stopCam(){if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}}
+function camera(){
+ modal(c=>{c.append(el("h2",null,"Camera"));const v=el("video");v.autoplay=true;v.playsInline=true;v.muted=true;c.append(v);
+  const r=el("div","row"),x=el("button","btn","Cancel"),s=el("button","btn p","Take photo");x.onclick=closeM;
+  s.onclick=()=>{const cv=document.createElement("canvas");cv.width=v.videoWidth;cv.height=v.videoHeight;cv.getContext("2d").drawImage(v,0,0);cv.toBlob(b=>{closeM();sendBlob(b,"image","photo.jpg")},"image/jpeg",.85)};
+  r.append(x,s);c.append(r);
+  const fail=()=>{v.remove();s.disabled=true;const p=el("p","who","Couldn’t access the camera. Check that your browser allows camera access for this page, then try again.");c.insertBefore(p,r)};
+  const go=o=>navigator.mediaDevices.getUserMedia(o).then(st=>{stream=st;v.srcObject=st});
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia)fail();
+  else go({video:{facingMode:"user"}}).catch(()=>go({video:true})).catch(fail)});
+}
+async function mic(){
+ const b=$("bMic");
+ if(rec){rec.stop();return}
+ try{const st=await navigator.mediaDevices.getUserMedia({audio:true});chunks=[];rec=new MediaRecorder(st);
+  rec.ondataavailable=e=>chunks.push(e.data);
+  rec.onstop=()=>{st.getTracks().forEach(t=>t.stop());b.classList.remove("rec");b.textContent="🎤";const bl=new Blob(chunks,{type:rec.mimeType||"audio/webm"});rec=null;if(bl.size>800)sendBlob(bl,"voice","voice")};
+  rec.start();b.classList.add("rec");b.textContent="⏹";toast("Recording… tap again to send")
+ }catch(e){toast("Microphone access was blocked")}}
+function applyBg(){const M=$("msgs");M.style.background=CFG.bg||"";M.classList.toggle("hasbg",!!CFG.bg)}
+async function setBg(bg){try{await db.collection("config").doc("chat").set({bg,by:myId,t:Date.now()})}catch(e){toast("Couldn’t change the background")}}
+function bgModal(){
+ if(!isAdmin(myId))return;
+ const PRE=[["Default",""],["Sand","#efe6d6"],["Sage","#dce8df"],["Sky","#dbe7f3"],["Blush","#f3dde4"],["Night","#1b1f2e"],["Sunset","linear-gradient(160deg,#fbd9b5,#f3a6b8)"],["Ocean","linear-gradient(160deg,#a7d8f0,#5b8fd6)"]];
+ modal(c=>{c.append(el("h2",null,"Chat background"));
+  const g=el("div","sw");g.style.gap="10px";
+  PRE.forEach(([n,v])=>{const b=el("button",CFG.bg===v||(!CFG.bg&&!v)?"on":"");b.title=n;b.style.cssText="width:44px;height:44px;border-radius:10px;border:2px solid var(--line);background:"+(v||"var(--bg)");b.onclick=async()=>{await setBg(v);closeM()};g.append(b)});
+  c.append(g);
+  const u=el("button","btn","Upload an image…");u.style.cssText="display:block;width:100%;margin-top:14px";
+  const f=el("input");f.type="file";f.accept="image/*";f.hidden=true;
+  u.onclick=()=>f.click();
+  f.onchange=async()=>{const file=f.files[0];if(!file)return;if(!assets)return toast("Uploads aren’t available for your account");toast("Uploading…");
+   try{const r=await assets.upload(file);await setBg("url("+r.url+") center/cover fixed");closeM();$("toast").style.display="none"}catch(e){toast("Upload failed (max 20 MB)")}};
+  c.append(u,f);
+  const r=el("div","row"),x=el("button","btn","Close");x.onclick=closeM;r.append(x);c.append(r)});
+}
+let RM=null,pc=null,cur=null,lstream=null,ringT=null,ctimer=null,pend=[],REG=null;
+const ICE={iceServers:[{urls:"stun:stun.l.google.com:19302"}]};
+const sig=(to,o)=>RM.emit("call",{to,from:myId,...o}).catch(()=>{});
+const media=kind=>navigator.mediaDevices.getUserMedia({audio:true,video:kind==="video"?{facingMode:"user"}:false});
+function initCalls(){if(RM)RM.on("call",m=>{if(m.isMe||!m.data||m.data.to!==myId)return;onSig(m.data)})}
+function callTo(kind){const k=Object.keys(P).find(x=>dmKey(x)===room);if(k)startCall(k,kind)}
+async function startCall(k,kind){
+ if(!RM||!navigator.mediaDevices)return toast("Calling isn’t available here");
+ if(cur)return toast("You’re already in a call");
+ try{lstream=await media(kind)}catch(e){return toast("Couldn’t access your "+(kind==="video"?"camera or microphone":"microphone"))}
+ cur={peer:k,kind,id:Math.random().toString(36).slice(2)};
+ showCall("Calling…");sig(k,{t:"ring",kind,cid:cur.id});
+ ringT=setTimeout(()=>{if(cur&&!cur.up)endCall(true,"No answer")},45000)}
+function mkpc(){
+ pc=new RTCPeerConnection(ICE);pend=[];
+ lstream.getTracks().forEach(t=>pc.addTrack(t,lstream));
+ pc.onicecandidate=e=>{if(e.candidate&&cur)sig(cur.peer,{t:"ice",cid:cur.id,c:e.candidate.toJSON()})};
+ pc.ontrack=e=>{if($("rv").srcObject!==e.streams[0])$("rv").srcObject=e.streams[0]};
+ pc.onconnectionstatechange=()=>{if(!pc)return;const s=pc.connectionState;if(s==="connected")connected();else if(s==="failed")endCall(true,"Connection failed")}}
+const flush=async()=>{for(const c of pend.splice(0))try{await pc.addIceCandidate(c)}catch(e){}};
+async function onSig(d){
+ try{
+  if(d.t==="ring"){if(cur)return sig(d.from,{t:"busy",cid:d.cid});return incoming(d)}
+  if(d.t==="end"&&$("ov").dataset.inc===d.cid){closeM();$("ov").dataset.inc="";return toast(name(d.from)+" stopped calling")}
+  if(!cur||d.cid!==cur.id||d.from!==cur.peer)return;
+  if(d.t==="accept"){mkpc();const o=await pc.createOffer();await pc.setLocalDescription(o);sig(cur.peer,{t:"offer",cid:cur.id,sdp:pc.localDescription.toJSON()})}
+  else if(d.t==="offer"){await pc.setRemoteDescription(d.sdp);await flush();const a=await pc.createAnswer();await pc.setLocalDescription(a);sig(cur.peer,{t:"answer",cid:cur.id,sdp:pc.localDescription.toJSON()})}
+  else if(d.t==="answer"){await pc.setRemoteDescription(d.sdp);await flush()}
+  else if(d.t==="ice"){if(pc&&pc.remoteDescription)await pc.addIceCandidate(d.c);else pend.push(d.c)}
+  else if(d.t==="busy")endCall(false,name(d.from)+" is busy");
+  else if(d.t==="decline")endCall(false,name(d.from)+" declined");
+  else if(d.t==="end")endCall(false,"Call ended");
+ }catch(e){endCall(true,"Call failed")}}
+function incoming(d){
+ if(MOD[d.from]&&MOD[d.from].kicked)return;
+ const t=setTimeout(()=>{if($("ov").dataset.inc===d.cid){closeM();$("ov").dataset.inc=""}},45000);
+ modal(c=>{$("ov").dataset.inc=d.cid;c.append(el("h2",null,"Incoming "+(d.kind==="video"?"video":"voice")+" call"));
+  const w=el("div");w.style.cssText="display:flex;align-items:center;gap:10px";w.append(avatar(d.from,44),el("span",null,name(d.from)));c.append(w);
+  const r=el("div","row"),no=el("button","btn d","Decline"),ok=el("button","btn p","Answer");
+  no.onclick=()=>{clearTimeout(t);$("ov").dataset.inc="";closeM();sig(d.from,{t:"decline",cid:d.cid})};
+  ok.onclick=async()=>{clearTimeout(t);$("ov").dataset.inc="";closeM();
+   try{lstream=await media(d.kind)}catch(e){sig(d.from,{t:"decline",cid:d.cid});return toast("Couldn’t access your microphone or camera")}
+   cur={peer:d.from,kind:d.kind,id:d.cid};showCall("Connecting…");mkpc();sig(d.from,{t:"accept",cid:d.cid})};
+  r.append(no,ok);c.append(r);ping()})}
+function showCall(s){
+ $("call").classList.add("on");$("cname").textContent=name(cur.peer);$("cstat").textContent=s;
+ $("cav").textContent="";$("cav").append(avatar(cur.peer,96));
+ $("lv").srcObject=lstream;const v=cur.kind==="video";$("lv").style.display=v?"block":"none";$("cCam").style.display=v?"":"none";
+ $("cMic").textContent="🎤";$("cCam").textContent="📷";$("rv").style.opacity=v?1:0}
+function connected(){
+ if(!cur||cur.up)return;cur.up=true;clearTimeout(ringT);const t0=Date.now();
+ if(cur.kind==="video")$("cinfo").style.display="none";
+ ctimer=setInterval(()=>{const s=Math.floor((Date.now()-t0)/1e3);$("cstat").textContent=Math.floor(s/60)+":"+String(s%60).padStart(2,"0")},500)}
+function endCall(notify,msg){
+ clearTimeout(ringT);clearInterval(ctimer);
+ if(notify&&cur)sig(cur.peer,{t:"end",cid:cur.id});
+ if(pc){pc.onconnectionstatechange=null;pc.close();pc=null}
+ if(lstream){lstream.getTracks().forEach(t=>t.stop());lstream=null}
+ $("rv").srcObject=null;$("lv").srcObject=null;$("call").classList.remove("on");$("cinfo").style.display="";
+ if(cur&&msg)toast(msg);cur=null}
+function bind(){
+ $("send").onclick=sendText;
+ $("txt").onkeydown=e=>{if(e.key==="Enter"&&S.enter&&!e.shiftKey){e.preventDefault();sendText()}};
+ $("bAtt").onclick=()=>$("file").click();$("bCam").onclick=camera;$("bMic").onclick=mic;
+ $("file").onchange=e=>{const f=e.target.files[0];e.target.value="";if(f)sendBlob(f,f.type.startsWith("image/")?"image":"file",f.name)};
+ $("camf").onchange=e=>{const f=e.target.files[0];e.target.value="";if(f)sendBlob(f,"image",f.name)};
+ $("burger").onclick=()=>$("side").classList.toggle("open");$("bBg").onclick=bgModal;
+ $("bVoice").onclick=()=>callTo("voice");$("bVideo").onclick=()=>callTo("video");$("cEnd").onclick=()=>endCall(true);
+ $("cMic").onclick=e=>{const t=lstream&&lstream.getAudioTracks();if(!t)return;const on=!t[0].enabled;t.forEach(x=>x.enabled=on);e.currentTarget.textContent=on?"🎤":"🔇"};
+ $("cCam").onclick=e=>{const t=lstream&&lstream.getVideoTracks();if(!t||!t.length)return;const on=!t[0].enabled;t.forEach(x=>x.enabled=on);e.currentTarget.textContent=on?"📷":"🚫"};
+ $("ov").onclick=e=>{if(e.target===$("ov")&&P[myId])closeM()};
+}
+init();
+</script></body></html>
