@@ -82,7 +82,14 @@ video{width:100%;border-radius:10px;background:#000}
 <div id="call"><video id="rv" autoplay playsinline></video><video id="lv" autoplay playsinline muted></video><div id="cinfo"><div id="cav"></div><div id="cname"></div><div id="cstat"></div></div><div id="cbar"><button class="ic" id="cMic" title="Mute microphone">🎤</button><button class="ic" id="cCam" title="Camera on/off">📷</button><button class="ic rec" id="cEnd" title="Hang up">📞</button></div></div>
 <div id="ov"><div class="card" id="card"></div></div><div id="toast"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
-<script src="config.js?v=2"></script>
+<script>
+/* ===== YOUR SUPABASE SETTINGS: edit the two quoted values below ===== */
+window.ARK = {
+  url: "https://YOUR-PROJECT.supabase.co",
+  key: "YOUR-ANON-PUBLIC-KEY"
+};
+/* =================================================================== */
+</script>
 <script>
 const COLS=["#b5651d","#2e7d6b","#4a6fa5","#a0457a","#7a5fb5","#c0392b","#5b7a2e","#555"];
 const $=id=>document.getElementById(id);
@@ -204,8 +211,8 @@ function pwModal(){modal(c=>{c.append(el("h2",null,"Change password"));
  r.append(cx,s);c.append(r)})}
 
 async function init(){
- if(!window.ARK){$("bootmsg").textContent="Setup needed: config.js did not load. It must be named exactly config.js and sit in the same folder as index.html.";return}
- if(!ARK.url||!ARK.key||/YOUR-PROJECT|YOUR-ANON/.test(ARK.url+ARK.key)){$("bootmsg").textContent="Setup needed: replace the placeholder values in config.js with your real Supabase URL and key.";return}
+ if(!window.ARK){$("bootmsg").textContent="Setup needed: the Supabase settings at the top of index.html are missing.";return}
+ if(!ARK.url||!ARK.key||/YOUR-PROJECT|YOUR-ANON/.test(ARK.url+ARK.key)){$("bootmsg").textContent="Setup needed: replace the placeholder URL and key near the top of index.html with your real Supabase values.";return}
  sb=supabase.createClient(ARK.url,ARK.key);db={collection:coll};assets=mkAssets();RM=mkRoom();
  sb.auth.onAuthStateChange(ev=>{if(ev==="PASSWORD_RECOVERY")RECOV=true});
  let {data:{session}}=await sb.auth.getSession();
