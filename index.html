@@ -82,7 +82,7 @@ video{width:100%;border-radius:10px;background:#000}
 <div id="call"><video id="rv" autoplay playsinline></video><video id="lv" autoplay playsinline muted></video><div id="cinfo"><div id="cav"></div><div id="cname"></div><div id="cstat"></div></div><div id="cbar"><button class="ic" id="cMic" title="Mute microphone">🎤</button><button class="ic" id="cCam" title="Camera on/off">📷</button><button class="ic rec" id="cEnd" title="Hang up">📞</button></div></div>
 <div id="ov"><div class="card" id="card"></div></div><div id="toast"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
-<script>window.ARK={url:"https://zorgsykcmjuikxryvoqs.supabase.co",key:"sb_publishable_R56iwERFQqdP2X4wfEfwfg_Rsa-Vtpj"};</script>
+<script src="config.js?v=2"></script>
 <script>
 const COLS=["#b5651d","#2e7d6b","#4a6fa5","#a0457a","#7a5fb5","#c0392b","#5b7a2e","#555"];
 const $=id=>document.getElementById(id);
@@ -145,7 +145,7 @@ function authScreen(){
   let mode="in",note="";
   const draw=()=>modal(c=>{
    c.append(el("h2",null,mode==="in"?"Sign in to The Ark":"Create your account"));
-   let fn,ln,nk;if(mode==="up"){const mk=(l,ac,ph)=>{const i=el("input");i.type="text";i.maxLength=30;i.autocomplete=ac;if(ph)i.placeholder=ph;field(c,l,i);return i};fn=mk("First name","given-name");ln=mk("Last name","family-name");nk=mk("Nickname","username","e.g. kpsilbor");nk.maxLength=20}
+   let fn,ln,nk,ac;if(mode==="up"){const mk=(l,ac,ph)=>{const i=el("input");i.type="text";i.maxLength=30;i.autocomplete=ac;if(ph)i.placeholder=ph;field(c,l,i);return i};fn=mk("First name","given-name");ln=mk("Last name","family-name");nk=mk("Nickname","username","e.g. kpsilbor");nk.maxLength=20;ac=mk("Access code (ask the owner)","off");ac.maxLength=40}
    const em=el("input");em.type="text";em.autocomplete="email";em.inputMode="email";em.placeholder="you@example.com";field(c,"Email",em);
    const pw=el("input");pw.type="password";pw.autocomplete=mode==="in"?"current-password":"new-password";field(c,"Password",pw);
    let p2;if(mode==="up"){p2=el("input");p2.type="password";p2.autocomplete="new-password";field(c,"Confirm password",p2)}
@@ -168,7 +168,8 @@ function authScreen(){
       if(pw.value.length<8)throw"Use at least 8 characters";
       if(pw.value!==p2.value)throw"Passwords don’t match";
       const {data:free}=await sb.rpc("nick_available",{n:nick});if(free===false)throw"That nickname is already taken";
-      const {data,error}=await sb.auth.signUp({email:e,password:pw.value,options:{data:{first,last,nick},emailRedirectTo:location.href.split("#")[0]}});
+      const code=ac.value.trim();const {data:ok}=await sb.rpc("code_ok",{c:code});if(ok===false)throw"That access code isn’t right";
+      const {data,error}=await sb.auth.signUp({email:e,password:pw.value,options:{data:{first,last,nick,code},emailRedirectTo:location.href.split("#")[0]}});
       if(error)throw error.message;
       if(!data.session){mode="in";note="Account created. Check your email to confirm it, then sign in.";return draw()}
      }
@@ -203,7 +204,8 @@ function pwModal(){modal(c=>{c.append(el("h2",null,"Change password"));
  r.append(cx,s);c.append(r)})}
 
 async function init(){
- if(!window.ARK||!ARK.url||/YOUR-PROJECT/.test(ARK.url)){$("bootmsg").textContent="Setup needed: add your Supabase URL and key to config.js";return}
+ if(!window.ARK){$("bootmsg").textContent="Setup needed: config.js did not load. It must be named exactly config.js and sit in the same folder as index.html.";return}
+ if(!ARK.url||!ARK.key||/YOUR-PROJECT|YOUR-ANON/.test(ARK.url+ARK.key)){$("bootmsg").textContent="Setup needed: replace the placeholder values in config.js with your real Supabase URL and key.";return}
  sb=supabase.createClient(ARK.url,ARK.key);db={collection:coll};assets=mkAssets();RM=mkRoom();
  sb.auth.onAuthStateChange(ev=>{if(ev==="PASSWORD_RECOVERY")RECOV=true});
  let {data:{session}}=await sb.auth.getSession();
@@ -230,6 +232,10 @@ function settings(){
   const th=el("select");[["auto","Match system"],["light","Light"],["dark","Dark"]].forEach(([v,t])=>{const o=el("option",null,t);o.value=v;th.append(o)});th.value=S.theme;field(c,"Theme",th);
   const chk=(l,k)=>{const w=el("label");w.style.cssText="display:flex;gap:8px;align-items:center;color:var(--ink)";const i=el("input");i.type="checkbox";i.checked=S[k];i.onchange=()=>{S[k]=i.checked;save()};w.append(i,l);c.append(w)};
   chk("Notification sound","sound");chk("Press Enter to send","enter");chk("Compact messages","compact");
+  if(isOwner){const ci=el("input");ci.type="text";ci.maxLength=40;ci.placeholder="No code set: anyone can join";field(c,"Access code (needed to create an account)",ci);
+   sb.from("access").select("code").maybeSingle().then(({data})=>{if(data)ci.value=data.code});
+   const cb=el("button","btn","Save code");cb.style.marginTop="6px";
+   cb.onclick=async()=>{const v=ci.value.trim();const {error}=v?await sb.from("access").upsert({id:"code",code:v}):await sb.from("access").delete().eq("id","code");toast(error?"Couldn’t save the code":v?"Access code saved":"Access code removed")};c.append(cb)}
   c.append(el("label",null,"Account"));const ae=el("div",null,SESS?SESS.email+(nick(myId)?" · "+nick(myId):""):"");c.append(ae);
   const ab=(t,cls,fn)=>{const q=el("button","btn "+cls,t);q.style.cssText="margin:6px 6px 0 0";q.onclick=fn;c.append(q)};
   ab("Change email","",emailModal);ab("Change password","",pwModal);ab("Sign out","",signOut);ab("Delete account","d",delAcct);
