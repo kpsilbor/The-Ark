@@ -69,7 +69,7 @@ video{width:100%;border-radius:10px;background:#000}
 <div id="app" style="display:none">
 <aside id="side"><h1>🛶 The Ark</h1><div id="list"></div><div id="me"></div></aside>
 <section id="main">
-<div id="head"><button id="burger" aria-label="Menu">☰</button><span id="title"></span><span style="margin-left:auto;display:flex;gap:2px"><button class="ic" id="bVoice" title="Voice call" style="display:none">📞</button><button class="ic" id="bVideo" title="Video call" style="display:none">🎥</button><button class="ic" id="bBg" title="Change chat background" style="display:none">🎨</button></span></div>
+<div id="head"><button id="burger" aria-label="Menu">☰</button><span id="title"></span><span style="margin-left:auto;display:flex;gap:2px"><button class="ic" id="bNotif" title="Turn on notifications" style="display:none">🔔</button><button class="ic" id="bVoice" title="Voice call" style="display:none">📞</button><button class="ic" id="bVideo" title="Video call" style="display:none">🎥</button><button class="ic" id="bBg" title="Change chat background" style="display:none">🎨</button></span></div>
 <div id="msgs"></div>
 <div id="bar">
 <button class="ic" id="bAtt" title="Send image or file">📎</button>
@@ -85,8 +85,8 @@ video{width:100%;border-radius:10px;background:#000}
 <script>
 /* ===== YOUR SUPABASE SETTINGS: edit the two quoted values below ===== */
 window.ARK = {
-  url: "https://zorgsykcmjuikxryvoqs.supabase.co",
-  key: "sb_publishable_R56iwERFQqdP2X4wfEfwfg_Rsa-Vtpj"
+  url: "https://YOUR-PROJECT.supabase.co",
+  key: "YOUR-ANON-PUBLIC-KEY"
 };
 /* =================================================================== */
 </script>
@@ -95,7 +95,7 @@ const COLS=["#b5651d","#2e7d6b","#4a6fa5","#a0457a","#7a5fb5","#c0392b","#5b7a2e
 const $=id=>document.getElementById(id);
 let db,assets,me,myId,room="general",unsub=null,P={},ADM={},MOD={},MSGS=[],isOwner=false,S={},CFG={},CID=null,SESS=null;
 try{S=JSON.parse(localStorage.getItem("ark-s")||"{}")}catch(e){}
-S={theme:"auto",sound:true,enter:true,compact:false,...S};
+S={theme:"auto",sound:true,enter:true,compact:false,notify:true,...S};
 function save(){try{localStorage.setItem("ark-s",JSON.stringify(S))}catch(e){}applyS()}
 function applyS(){const r=document.documentElement;S.theme==="auto"?r.removeAttribute("data-theme"):r.setAttribute("data-theme",S.theme);document.body.classList.toggle("compact",S.compact)}
 applyS();
@@ -221,6 +221,9 @@ async function init(){
  const watch=(c,f)=>new Promise(res=>db.collection(c).onSnapshot(s=>{const o={};s.docs.forEach(d=>o[d.id]=d.data());f(o);refresh();res()},()=>res()));
  await Promise.all([watch("profiles",o=>P=o),watch("admins",o=>{ADM=o;ownerId=Object.keys(o).find(k=>o[k].role==="owner")||null;isOwner=myId===ownerId}),watch("mod",o=>MOD=o),watch("config",o=>{CFG=o.chat||{};applyBg()})]);
  initCalls();ch.subscribe();
+ sb.channel("notif").on("postgres_changes",{event:"INSERT",schema:"public",table:"messages"},p=>onNew(p.new)).subscribe();
+ if("serviceWorker" in navigator){navigator.serviceWorker.register("sw.js").catch(()=>{});navigator.serviceWorker.addEventListener("message",e=>{if(e.data&&e.data.room)open(e.data.room)})}
+ notifBtn();
  if(MOD[myId]&&MOD[myId].kicked&&!isAdmin(myId)){$("bootmsg").textContent="You have been removed from The Ark by an admin.";return}
  if(!P[myId]){$("bootmsg").textContent="Your profile wasn’t found. Please contact the owner.";return}
  $("boot").style.display="none";$("app").style.display="flex";
@@ -237,8 +240,8 @@ function settings(){
   const st=el("input");st.type="text";st.maxLength=60;st.value=p.status||"";st.placeholder="What’s on your mind?";field(c,"Status",st);
   c.append(el("label",null,"Colour"),swatches(col,v=>col=v));
   const th=el("select");[["auto","Match system"],["light","Light"],["dark","Dark"]].forEach(([v,t])=>{const o=el("option",null,t);o.value=v;th.append(o)});th.value=S.theme;field(c,"Theme",th);
-  const chk=(l,k)=>{const w=el("label");w.style.cssText="display:flex;gap:8px;align-items:center;color:var(--ink)";const i=el("input");i.type="checkbox";i.checked=S[k];i.onchange=()=>{S[k]=i.checked;save()};w.append(i,l);c.append(w)};
-  chk("Notification sound","sound");chk("Press Enter to send","enter");chk("Compact messages","compact");
+  const chk=(l,k)=>{const w=el("label");w.style.cssText="display:flex;gap:8px;align-items:center;color:var(--ink)";const i=el("input");i.type="checkbox";i.checked=S[k];i.onchange=()=>{S[k]=i.checked;save();if(k==="notify"&&i.checked)askNotif()};w.append(i,l);c.append(w)};
+  chk("Notification sound","sound");chk("System notifications","notify");chk("Press Enter to send","enter");chk("Compact messages","compact");
   if(isOwner){const ci=el("input");ci.type="text";ci.maxLength=40;ci.placeholder="No code set: anyone can join";field(c,"Access code (needed to create an account)",ci);
    sb.from("access").select("code").maybeSingle().then(({data})=>{if(data)ci.value=data.code});
    const cb=el("button","btn","Save code");cb.style.marginTop="6px";
@@ -386,6 +389,7 @@ async function onSig(d){
  }catch(e){endCall(true,"Call failed")}}
 function incoming(d){
  if(MOD[d.from]&&MOD[d.from].kicked)return;
+ if(document.hidden||!document.hasFocus())showN("Incoming "+(d.kind==="video"?"video":"voice")+" call",name(d.from),"call","");
  const t=setTimeout(()=>{if($("ov").dataset.inc===d.cid){closeM();$("ov").dataset.inc=""}},45000);
  modal(c=>{$("ov").dataset.inc=d.cid;c.append(el("h2",null,"Incoming "+(d.kind==="video"?"video":"voice")+" call"));
   const w=el("div");w.style.cssText="display:flex;align-items:center;gap:10px";w.append(avatar(d.from,44),el("span",null,name(d.from)));c.append(w);
@@ -411,6 +415,23 @@ function endCall(notify,msg){
  if(lstream){lstream.getTracks().forEach(t=>t.stop());lstream=null}
  $("rv").srcObject=null;$("lv").srcObject=null;$("call").classList.remove("on");$("cinfo").style.display="";
  if(cur&&msg)toast(msg);cur=null}
+const canN=()=>"Notification" in window;
+function notifBtn(){$("bNotif").style.display=canN()&&Notification.permission==="default"&&S.notify?"":"none"}
+function askNotif(){
+ if(!canN())return toast("This browser doesn’t support notifications");
+ if(Notification.permission==="denied")return toast("Notifications are blocked. Allow them in your browser’s site settings.");
+ Notification.requestPermission().then(p=>{notifBtn();toast(p==="granted"?"Notifications are on":"Notifications weren’t allowed")})}
+async function showN(title,body,tag,rm){
+ if(!canN()||Notification.permission!=="granted"||!S.notify)return;
+ const o={body,tag,renotify:true,data:{room:rm}};
+ try{const reg=navigator.serviceWorker&&await navigator.serviceWorker.getRegistration();if(reg&&reg.active){await reg.showNotification(title,o);return}}catch(e){}
+ try{const n=new Notification(title,o);n.onclick=()=>{window.focus();if(rm)open(rm);n.close()}}catch(e){}}
+function onNew(m){
+ if(!m||m.sender===myId||(MOD[myId]&&MOD[myId].kicked))return;
+ if(room===m.room&&document.hasFocus())return;
+ const dm=m.room!=="general";
+ const body=m.kind==="image"?"📷 Photo":m.kind==="voice"?"🎤 Voice message":m.kind==="file"?"📄 "+(m.name||"File"):(m.text||"");
+ showN(dm?name(m.sender):"The Ark",dm?body:name(m.sender)+": "+body,m.room,m.room)}
 function bind(){
  $("send").onclick=sendText;
  $("txt").onkeydown=e=>{if(e.key==="Enter"&&S.enter&&!e.shiftKey){e.preventDefault();sendText()}};
@@ -418,7 +439,7 @@ function bind(){
  $("file").onchange=e=>{const f=e.target.files[0];e.target.value="";if(f)sendBlob(f,f.type.startsWith("image/")?"image":"file",f.name)};
  $("camf").onchange=e=>{const f=e.target.files[0];e.target.value="";if(f)sendBlob(f,"image",f.name)};
  $("burger").onclick=()=>$("side").classList.toggle("open");$("bBg").onclick=bgModal;
- $("bVoice").onclick=()=>callTo("voice");$("bVideo").onclick=()=>callTo("video");$("cEnd").onclick=()=>endCall(true);
+ $("bNotif").onclick=askNotif;$("bVoice").onclick=()=>callTo("voice");$("bVideo").onclick=()=>callTo("video");$("cEnd").onclick=()=>endCall(true);
  $("cMic").onclick=e=>{const t=lstream&&lstream.getAudioTracks();if(!t)return;const on=!t[0].enabled;t.forEach(x=>x.enabled=on);e.currentTarget.textContent=on?"🎤":"🔇"};
  $("cCam").onclick=e=>{const t=lstream&&lstream.getVideoTracks();if(!t||!t.length)return;const on=!t[0].enabled;t.forEach(x=>x.enabled=on);e.currentTarget.textContent=on?"📷":"🚫"};
  $("ov").onclick=e=>{if(e.target===$("ov")&&P[myId])closeM()};
