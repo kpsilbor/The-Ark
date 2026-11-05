@@ -61,6 +61,7 @@ video{width:100%;border-radius:10px;background:#000}
 #rv{width:100%;flex:1;min-height:0;object-fit:cover;background:#000}#lv{position:absolute;right:12px;top:calc(12px + env(safe-area-inset-top,0px));width:110px;border-radius:10px;background:#222;transform:scaleX(-1);display:none}
 #cinfo{position:absolute;top:28%;text-align:center}#cav{display:flex;justify-content:center;margin-bottom:10px}#cname{font-size:20px;font-weight:600}#cstat{opacity:.7;margin-top:4px}
 #cbar{display:flex;gap:16px;padding:16px}#cbar .ic{width:54px;height:54px;font-size:22px;background:#333;color:#fff}
+#banner{position:fixed;top:calc(10px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);width:min(420px,92%);background:var(--panel);color:var(--ink);border:1px solid var(--line);border-left:4px solid var(--acc);border-radius:10px;padding:10px 14px;box-shadow:0 6px 24px #0004;z-index:35;display:none;cursor:pointer}
 #toast{position:fixed;left:50%;bottom:80px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:8px 14px;border-radius:20px;display:none;z-index:30}
 .center{height:100%;display:grid;place-items:center;text-align:center;padding:24px}
 @media(max-width:700px){#side{position:fixed;inset:0 auto 0 0;z-index:10;transform:translateX(-100%);transition:.2s;width:80%;padding-top:env(safe-area-inset-top,0px)}#side.open{transform:none}#burger{display:block}}
@@ -85,8 +86,8 @@ video{width:100%;border-radius:10px;background:#000}
 <script>
 /* ===== YOUR SUPABASE SETTINGS: edit the two quoted values below ===== */
 window.ARK = {
-  url: "https://zorgsykcmjuikxryvoqs.supabase.co",
-  key: "sb_publishable_R56iwERFQqdP2X4wfEfwfg_Rsa-Vtpj"
+  url: "https://YOUR-PROJECT.supabase.co",
+  key: "YOUR-ANON-PUBLIC-KEY"
 };
 /* =================================================================== */
 </script>
@@ -95,7 +96,7 @@ const COLS=["#b5651d","#2e7d6b","#4a6fa5","#a0457a","#7a5fb5","#c0392b","#5b7a2e
 const $=id=>document.getElementById(id);
 let db,assets,me,myId,room="general",unsub=null,P={},ADM={},MOD={},MSGS=[],isOwner=false,S={},CFG={},CID=null,SESS=null;
 try{S=JSON.parse(localStorage.getItem("ark-s")||"{}")}catch(e){}
-S={theme:"auto",sound:true,enter:true,compact:false,notify:true,...S};
+S={theme:"auto",sound:true,enter:true,compact:false,notify:true,inapp:true,snd:"chime",vol:.6,ringOn:true,callN:true,rvib:true,ring:"classic",rvol:.8,...S};
 function save(){try{localStorage.setItem("ark-s",JSON.stringify(S))}catch(e){}applyS()}
 function applyS(){const r=document.documentElement;S.theme==="auto"?r.removeAttribute("data-theme"):r.setAttribute("data-theme",S.theme);document.body.classList.toggle("compact",S.compact)}
 applyS();
@@ -224,13 +225,15 @@ async function init(){
  sb.channel("notif").on("postgres_changes",{event:"INSERT",schema:"public",table:"messages"},p=>onNew(p.new)).subscribe();
  if("serviceWorker" in navigator){navigator.serviceWorker.register("sw.js").catch(()=>{});navigator.serviceWorker.addEventListener("message",e=>{if(e.data&&e.data.room)open(e.data.room)})}
  notifBtn();
+ window.addEventListener("focus",clearUN);document.addEventListener("visibilitychange",()=>{if(!document.hidden)clearUN()});
  if(MOD[myId]&&MOD[myId].kicked&&!isAdmin(myId)){$("bootmsg").textContent="You have been removed from The Ark by an admin.";return}
  if(!P[myId]){$("bootmsg").textContent="Your profile wasn’t found. Please contact the owner.";return}
  $("boot").style.display="none";$("app").style.display="flex";
+ {const {data:dbg}=await sb.from("dm_bg").select("room,bg");(dbg||[]).forEach(r=>{DMBG[r.room]=r.bg})}
  open(room);bind();
 }
 function modal(build){const c=$("card");c.textContent="";build(c);$("ov").classList.add("on")}
-function closeM(){$("ov").classList.remove("on");$("card").textContent="";stopCam()}
+function closeM(){if($("ov").dataset.inc)stopRing();$("ov").classList.remove("on");$("card").textContent="";stopCam()}
 function field(c,label,node){c.append(el("label",null,label),node);return node}
 function swatches(cur,on){const w=el("div","sw");COLS.forEach(k=>{const b=el("button",k===cur?"on":"");b.style.background=k;b.onclick=()=>{[...w.children].forEach(x=>x.classList.remove("on"));b.classList.add("on");on(k)};w.append(b)});return w}
 function settings(){
@@ -241,7 +244,25 @@ function settings(){
   c.append(el("label",null,"Colour"),swatches(col,v=>col=v));
   const th=el("select");[["auto","Match system"],["light","Light"],["dark","Dark"]].forEach(([v,t])=>{const o=el("option",null,t);o.value=v;th.append(o)});th.value=S.theme;field(c,"Theme",th);
   const chk=(l,k)=>{const w=el("label");w.style.cssText="display:flex;gap:8px;align-items:center;color:var(--ink)";const i=el("input");i.type="checkbox";i.checked=S[k];i.onchange=()=>{S[k]=i.checked;save();if(k==="notify"&&i.checked)askNotif()};w.append(i,l);c.append(w)};
-  chk("Notification sound","sound");chk("System notifications","notify");chk("Press Enter to send","enter");chk("Compact messages","compact");
+  chk("Play notification sounds","sound");chk("System notifications","notify");chk("In-app alerts","inapp");
+  const sd=el("select");Object.entries(SNDN).forEach(([k,t])=>{const o=el("option",null,t);o.value=k;sd.append(o)});
+  if(S.custom){const o=el("option",null,"My uploaded sound");o.value="custom";sd.append(o)}
+  sd.value=S.snd||"chime";sd.onchange=()=>{S.snd=sd.value;save();playSound(S.snd)};field(c,"Sound",sd);
+  const vr=el("input");vr.type="range";vr.min=0;vr.max=1;vr.step=.05;vr.value=S.vol;vr.style.width="100%";vr.onchange=()=>{S.vol=+vr.value;save();playSound(S.snd||"chime")};field(c,"Volume",vr);
+  const up=el("button","btn","Upload your own sound…"),uf=el("input");up.style.cssText="margin:8px 6px 0 0";uf.type="file";uf.accept="audio/*";uf.hidden=true;up.onclick=()=>uf.click();
+  uf.onchange=()=>{const f=uf.files[0];if(!f)return;if(f.size>300000)return toast("Sound too large (max 300 KB)");const r=new FileReader();r.onload=()=>{S.custom=r.result;S.snd="custom";save();toast("Sound saved");settings()};r.readAsDataURL(f)};
+  c.append(up,uf);
+  if(S.custom){const rm=el("button","btn","Remove my sound");rm.style.marginTop="8px";rm.onclick=()=>{delete S.custom;S.snd="chime";save();settings()};c.append(rm)}chk("Press Enter to send","enter");chk("Compact messages","compact");
+  c.append(el("label",null,"Calls"));
+  chk("Ring for incoming calls","ringOn");chk("Call notifications (when The Ark is in the background)","callN");chk("Vibrate on incoming calls (phones)","rvib");
+  const rs=el("select");Object.entries(RINGN).forEach(([k,t])=>{const o=el("option",null,t);o.value=k;rs.append(o)});
+  if(S.rcustom){const o=el("option",null,"My uploaded ringtone");o.value="custom";rs.append(o)}
+  rs.value=S.ring||"classic";rs.onchange=()=>{S.ring=rs.value;save();startRing(false,true);setTimeout(stopRing,3500)};field(c,"Ringtone",rs);
+  const rv=el("input");rv.type="range";rv.min=0;rv.max=1;rv.step=.05;rv.value=S.rvol==null?.8:S.rvol;rv.style.width="100%";rv.onchange=()=>{S.rvol=+rv.value;save();startRing(false,true);setTimeout(stopRing,2500)};field(c,"Ringtone volume",rv);
+  const ru=el("button","btn","Upload your own ringtone\u2026"),rf=el("input");ru.style.cssText="margin:8px 6px 0 0";rf.type="file";rf.accept="audio/*";rf.hidden=true;ru.onclick=()=>rf.click();
+  rf.onchange=()=>{const f=rf.files[0];if(!f)return;if(f.size>500000)return toast("Ringtone too large (max 500 KB)");const r=new FileReader();r.onload=()=>{S.rcustom=r.result;S.ring="custom";save();toast("Ringtone saved");settings()};r.readAsDataURL(f)};
+  c.append(ru,rf);
+  if(S.rcustom){const rr=el("button","btn","Remove my ringtone");rr.style.marginTop="8px";rr.onclick=()=>{delete S.rcustom;S.ring="classic";save();settings()};c.append(rr)}
   if(isOwner){const ci=el("input");ci.type="text";ci.maxLength=40;ci.placeholder="No code set: anyone can join";field(c,"Access code (needed to create an account)",ci);
    sb.from("access").select("code").maybeSingle().then(({data})=>{if(data)ci.value=data.code});
    const cb=el("button","btn","Save code");cb.style.marginTop="6px";
@@ -259,7 +280,7 @@ function checkKick(){const m=MOD[myId];if(m&&m.kicked&&!isAdmin(myId)){$("app").
  else if($("boot").style.display==="grid"&&P[myId]&&$("bootmsg").textContent.startsWith("You have been")){$("boot").style.display="none";$("app").style.display="flex"}}
 function list(){
  const L=$("list");L.textContent="";L.append(el("div","sec","Group"));
- const g=el("button","item"+(room==="general"?" on":""));const ga=el("div","av","#");ga.style.background="var(--acc)";g.append(ga,el("span","n","The Ark"));g.onclick=()=>open("general");L.append(g);
+ const g=el("button","item"+(room==="general"?" on":""));const ga=el("div","av","#");ga.style.background="var(--acc)";g.append(ga,el("span","n","The Ark"));if(UN.general)g.append(el("span","tag",UN.general));g.onclick=()=>open("general");L.append(g);
  L.append(el("div","sec","Direct messages"));
  Object.keys(P).filter(k=>k!==myId).sort((a,b)=>name(a).localeCompare(name(b))).forEach(k=>{
   const key=dmKey(k),b=el("button","item"+(room===key?" on":""));
@@ -267,13 +288,13 @@ function list(){
   if(isAdmin(k))b.append(el("span","tag","admin"));
   if(MOD[k]&&MOD[k].kicked)b.append(el("span","tag k","kicked"));else if(MOD[k]&&MOD[k].muted)b.append(el("span","tag m","muted"));
   if(isAdmin(myId)){const d=el("span","dots","⋯");d.onclick=e=>{e.stopPropagation();member(k)};b.append(d)}
-  b.onclick=()=>open(key);L.append(b)});
+  if(UN[key])b.append(el("span","tag",UN[key]));b.onclick=()=>open(key);L.append(b)});
  const m=$("me");m.textContent="";m.append(avatar(myId,34));const w=el("div");w.style.flex="1";w.style.minWidth="0";
  w.append(el("div",null,name(myId)),el("div","who",(nick(myId)?nick(myId)+" · ":"")+(isAdmin(myId)?"Admin":"Member")));m.append(w);
  const s=el("button","ic","⚙️");s.title="Settings";s.onclick=settings;m.append(s);
 }
 const dmKey=k=>"dm_"+[myId,k].sort().join("_");
-function head(){const t=$("title");t.textContent="";$("bBg").style.display=isAdmin(myId)?"":"none";$("bVoice").style.display=$("bVideo").style.display=(room!=="general"&&RM)?"":"none";if(room==="general"){t.textContent="The Ark"}else{const k=Object.keys(P).find(x=>dmKey(x)===room);if(k){t.append(avatar(k,26),el("span",null," "+name(k)+(nick(k)?" ("+nick(k)+")":"")));if(P[k].status)t.append(el("span","who","· "+P[k].status))}}
+function head(){const t=$("title");t.textContent="";$("bBg").style.display=room==="general"?(isAdmin(myId)?"":"none"):"";$("bVoice").style.display=$("bVideo").style.display=(room!=="general"&&RM)?"":"none";if(room==="general"){t.textContent="The Ark"}else{const k=Object.keys(P).find(x=>dmKey(x)===room);if(k){t.append(avatar(k,26),el("span",null," "+name(k)+(nick(k)?" ("+nick(k)+")":"")));if(P[k].status)t.append(el("span","who","· "+P[k].status))}}
  const mm=MOD[myId]&&MOD[myId].muted;$("txt").disabled=mm;$("txt").placeholder=mm?"You are muted by an admin":"Message"}
 function member(k){
  modal(c=>{c.append(el("h2",null,name(k)+(nick(k)?" "+nick(k):"")));const mod=MOD[k]||{};
@@ -287,11 +308,19 @@ function member(k){
   else c.append(el("p","who","Only the owner can rename, mute or kick admins."));
   const r=el("div","row"),x=el("button","btn","Close");x.onclick=closeM;r.append(x);c.append(r)});
 }
-function open(r){room=r;$("side").classList.remove("open");if(unsub)unsub();MSGS=[];draw(true);list();head();
+function open(r){room=r;UN[r]=0;title();applyBg();$("side").classList.remove("open");if(unsub)unsub();MSGS=[];draw(true);list();head();
  unsub=db.collection("msgs").where("room","==",r).orderBy("t","desc").limit(200).onSnapshot(s=>{
   const first=!MSGS.length;const prev=MSGS.length;MSGS=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>a.t-b.t);
   if(MSGS.length>prev&&prev&&MSGS[MSGS.length-1].from!==myId)ping();draw(first)},e=>toast("Couldn’t load messages"));}
-function ping(){if(!S.sound)return;try{const a=new AudioContext(),o=a.createOscillator(),g=a.createGain();o.connect(g);g.connect(a.destination);o.frequency.value=720;g.gain.value=.05;o.start();o.stop(a.currentTime+.12)}catch(e){}}
+const SND={chime:[[880,0,.18],[1320,.12,.3]],ding:[[1046,0,.4]],pop:[[520,0,.07],[780,.05,.09]],bubble:[[400,0,.08],[600,.07,.08],[800,.14,.1]],marimba:[[659,0,.2],[784,.1,.2],[988,.2,.3]],beep:[[760,0,.12],[760,.18,.12]]};
+const SNDN={chime:"Chime",ding:"Ding",pop:"Pop",bubble:"Bubble",marimba:"Marimba",beep:"Double beep",none:"Silent"};
+function playSound(n){
+ try{const v=S.vol==null?.6:S.vol;if(n==="none")return;
+  if(n==="custom"&&S.custom){const a=new Audio(S.custom);a.volume=v;a.play().catch(()=>{});return}
+  const a=new (window.AudioContext||window.webkitAudioContext)();
+  (SND[n]||SND.chime).forEach(([f,t,d])=>{const o=a.createOscillator(),g=a.createGain();o.type="sine";o.frequency.value=f;o.connect(g);g.connect(a.destination);const st=a.currentTime+t;g.gain.setValueAtTime(0,st);g.gain.linearRampToValueAtTime(.35*v,st+.01);g.gain.exponentialRampToValueAtTime(.0001,st+d);o.start(st);o.stop(st+d+.02)});
+  setTimeout(()=>a.close(),1500)}catch(e){}}
+function ping(){if(S.sound)playSound(S.snd||"chime")}
 function draw(stick){
  const M=$("msgs");const near=M.scrollHeight-M.scrollTop-M.clientHeight<120;M.textContent="";
  if(!MSGS.length)M.append(el("p","who","No messages yet. Say hello! 👋"));
@@ -337,20 +366,28 @@ async function mic(){
   rec.onstop=()=>{st.getTracks().forEach(t=>t.stop());b.classList.remove("rec");b.textContent="🎤";const bl=new Blob(chunks,{type:rec.mimeType||"audio/webm"});rec=null;if(bl.size>800)sendBlob(bl,"voice","voice")};
   rec.start();b.classList.add("rec");b.textContent="⏹";toast("Recording… tap again to send")
  }catch(e){toast("Microphone access was blocked")}}
-function applyBg(){const M=$("msgs");M.style.background=CFG.bg||"";M.classList.toggle("hasbg",!!CFG.bg)}
+function applyBg(){const M=$("msgs"),bg=room==="general"?CFG.bg:DMBG[room];M.style.background=bg||"";M.classList.toggle("hasbg",!!bg)}
 async function setBg(bg){try{await db.collection("config").doc("chat").set({bg,by:myId,t:Date.now()})}catch(e){toast("Couldn’t change the background")}}
+async function setDmBg(bg){const r=room;try{
+ if(bg){const {error}=await sb.from("dm_bg").upsert({user_id:myId,room:r,bg});if(error)throw error;DMBG[r]=bg}
+ else{const {error}=await sb.from("dm_bg").delete().eq("user_id",myId).eq("room",r);if(error)throw error;delete DMBG[r]}
+ applyBg()}catch(e){toast("Couldn’t change the background")}}
+function shrink(file){return new Promise(res=>{if(!/^image\/(png|jpe?g|webp)/.test(file.type))return res(file);
+ const u=URL.createObjectURL(file),i=new Image();
+ i.onload=()=>{const k=Math.min(1,1920/Math.max(i.width,i.height)),cv=document.createElement("canvas");cv.width=Math.round(i.width*k);cv.height=Math.round(i.height*k);cv.getContext("2d").drawImage(i,0,0,cv.width,cv.height);URL.revokeObjectURL(u);cv.toBlob(b=>res(b||file),"image/jpeg",.82)};
+ i.onerror=()=>res(file);i.src=u})}
 function bgModal(){
- if(!isAdmin(myId))return;
+ const dm=room!=="general";if(!dm&&!isAdmin(myId))return;const put=dm?setDmBg:setBg;
  const PRE=[["Default",""],["Sand","#efe6d6"],["Sage","#dce8df"],["Sky","#dbe7f3"],["Blush","#f3dde4"],["Night","#1b1f2e"],["Sunset","linear-gradient(160deg,#fbd9b5,#f3a6b8)"],["Ocean","linear-gradient(160deg,#a7d8f0,#5b8fd6)"]];
- modal(c=>{c.append(el("h2",null,"Chat background"));
+ modal(c=>{c.append(el("h2",null,dm?"Your background for this chat":"Chat background"));
   const g=el("div","sw");g.style.gap="10px";
-  PRE.forEach(([n,v])=>{const b=el("button",CFG.bg===v||(!CFG.bg&&!v)?"on":"");b.title=n;b.style.cssText="width:44px;height:44px;border-radius:10px;border:2px solid var(--line);background:"+(v||"var(--bg)");b.onclick=async()=>{await setBg(v);closeM()};g.append(b)});
+  PRE.forEach(([n,v])=>{const b=el("button",CFG.bg===v||(!CFG.bg&&!v)?"on":"");b.title=n;b.style.cssText="width:44px;height:44px;border-radius:10px;border:2px solid var(--line);background:"+(v||"var(--bg)");b.onclick=async()=>{await put(v);closeM()};g.append(b)});
   c.append(g);
   const u=el("button","btn","Upload an image…");u.style.cssText="display:block;width:100%;margin-top:14px";
   const f=el("input");f.type="file";f.accept="image/*";f.hidden=true;
   u.onclick=()=>f.click();
   f.onchange=async()=>{const file=f.files[0];if(!file)return;if(!assets)return toast("Uploads aren’t available for your account");toast("Uploading…");
-   try{const r=await assets.upload(file);await setBg("url("+r.url+") center/cover fixed");closeM();$("toast").style.display="none"}catch(e){toast("Upload failed (max 20 MB)")}};
+   try{const r=await assets.upload(await shrink(file));await put("url("+r.url+") center/cover no-repeat");closeM();$("toast").style.display="none"}catch(e){toast("Upload failed (max 20 MB)")}};
   c.append(u,f);
   const r=el("div","row"),x=el("button","btn","Close");x.onclick=closeM;r.append(x);c.append(r)});
 }
@@ -365,7 +402,7 @@ async function startCall(k,kind){
  if(cur)return toast("You’re already in a call");
  try{lstream=await media(kind)}catch(e){return toast("Couldn’t access your "+(kind==="video"?"camera or microphone":"microphone"))}
  cur={peer:k,kind,id:Math.random().toString(36).slice(2)};
- showCall("Calling…");sig(k,{t:"ring",kind,cid:cur.id});
+ showCall("Calling…");sig(k,{t:"ring",kind,cid:cur.id});startRing(true);
  ringT=setTimeout(()=>{if(cur&&!cur.up)endCall(true,"No answer")},45000)}
 function mkpc(){
  pc=new RTCPeerConnection(ICE);pend=[];
@@ -377,9 +414,9 @@ const flush=async()=>{for(const c of pend.splice(0))try{await pc.addIceCandidate
 async function onSig(d){
  try{
   if(d.t==="ring"){if(cur)return sig(d.from,{t:"busy",cid:d.cid});return incoming(d)}
-  if(d.t==="end"&&$("ov").dataset.inc===d.cid){closeM();$("ov").dataset.inc="";return toast(name(d.from)+" stopped calling")}
+  if(d.t==="end"&&$("ov").dataset.inc===d.cid){closeM();$("ov").dataset.inc="";missed(d.from);return toast(name(d.from)+" stopped calling")}
   if(!cur||d.cid!==cur.id||d.from!==cur.peer)return;
-  if(d.t==="accept"){mkpc();const o=await pc.createOffer();await pc.setLocalDescription(o);sig(cur.peer,{t:"offer",cid:cur.id,sdp:pc.localDescription.toJSON()})}
+  if(d.t==="accept"){stopRing();mkpc();const o=await pc.createOffer();await pc.setLocalDescription(o);sig(cur.peer,{t:"offer",cid:cur.id,sdp:pc.localDescription.toJSON()})}
   else if(d.t==="offer"){await pc.setRemoteDescription(d.sdp);await flush();const a=await pc.createAnswer();await pc.setLocalDescription(a);sig(cur.peer,{t:"answer",cid:cur.id,sdp:pc.localDescription.toJSON()})}
   else if(d.t==="answer"){await pc.setRemoteDescription(d.sdp);await flush()}
   else if(d.t==="ice"){if(pc&&pc.remoteDescription)await pc.addIceCandidate(d.c);else pend.push(d.c)}
@@ -390,26 +427,27 @@ async function onSig(d){
 function incoming(d){
  if(MOD[d.from]&&MOD[d.from].kicked)return;
  if(document.hidden||!document.hasFocus())showN("Incoming "+(d.kind==="video"?"video":"voice")+" call",name(d.from),"call","");
- const t=setTimeout(()=>{if($("ov").dataset.inc===d.cid){closeM();$("ov").dataset.inc=""}},45000);
+ startRing(false);
+ const t=setTimeout(()=>{if($("ov").dataset.inc===d.cid){closeM();$("ov").dataset.inc="";missed(d.from)}},45000);
  modal(c=>{$("ov").dataset.inc=d.cid;c.append(el("h2",null,"Incoming "+(d.kind==="video"?"video":"voice")+" call"));
   const w=el("div");w.style.cssText="display:flex;align-items:center;gap:10px";w.append(avatar(d.from,44),el("span",null,name(d.from)));c.append(w);
   const r=el("div","row"),no=el("button","btn d","Decline"),ok=el("button","btn p","Answer");
-  no.onclick=()=>{clearTimeout(t);$("ov").dataset.inc="";closeM();sig(d.from,{t:"decline",cid:d.cid})};
-  ok.onclick=async()=>{clearTimeout(t);$("ov").dataset.inc="";closeM();
+  no.onclick=()=>{clearTimeout(t);stopRing();$("ov").dataset.inc="";closeM();sig(d.from,{t:"decline",cid:d.cid})};
+  ok.onclick=async()=>{clearTimeout(t);stopRing();$("ov").dataset.inc="";closeM();
    try{lstream=await media(d.kind)}catch(e){sig(d.from,{t:"decline",cid:d.cid});return toast("Couldn’t access your microphone or camera")}
    cur={peer:d.from,kind:d.kind,id:d.cid};showCall("Connecting…");mkpc();sig(d.from,{t:"accept",cid:d.cid})};
-  r.append(no,ok);c.append(r);ping()})}
+  r.append(no,ok);c.append(r)})}
 function showCall(s){
  $("call").classList.add("on");$("cname").textContent=name(cur.peer);$("cstat").textContent=s;
  $("cav").textContent="";$("cav").append(avatar(cur.peer,96));
  $("lv").srcObject=lstream;const v=cur.kind==="video";$("lv").style.display=v?"block":"none";$("cCam").style.display=v?"":"none";
  $("cMic").textContent="🎤";$("cCam").textContent="📷";$("rv").style.opacity=v?1:0}
 function connected(){
- if(!cur||cur.up)return;cur.up=true;clearTimeout(ringT);const t0=Date.now();
+ if(!cur||cur.up)return;cur.up=true;stopRing();clearTimeout(ringT);const t0=Date.now();
  if(cur.kind==="video")$("cinfo").style.display="none";
  ctimer=setInterval(()=>{const s=Math.floor((Date.now()-t0)/1e3);$("cstat").textContent=Math.floor(s/60)+":"+String(s%60).padStart(2,"0")},500)}
 function endCall(notify,msg){
- clearTimeout(ringT);clearInterval(ctimer);
+ clearTimeout(ringT);clearInterval(ctimer);stopRing();
  if(notify&&cur)sig(cur.peer,{t:"end",cid:cur.id});
  if(pc){pc.onconnectionstatechange=null;pc.close();pc=null}
  if(lstream){lstream.getTracks().forEach(t=>t.stop());lstream=null}
@@ -422,16 +460,42 @@ function askNotif(){
  if(Notification.permission==="denied")return toast("Notifications are blocked. Allow them in your browser’s site settings.");
  Notification.requestPermission().then(p=>{notifBtn();toast(p==="granted"?"Notifications are on":"Notifications weren’t allowed")})}
 async function showN(title,body,tag,rm){
- if(!canN()||Notification.permission!=="granted"||!S.notify)return;
- const o={body,tag,renotify:true,data:{room:rm}};
+ const isCall=/^call/.test(tag);if(!canN()||Notification.permission!=="granted"||!(isCall?S.callN!==false:S.notify))return;
+ const o={body,tag,renotify:true,requireInteraction:tag==="call",data:{room:rm}};
  try{const reg=navigator.serviceWorker&&await navigator.serviceWorker.getRegistration();if(reg&&reg.active){await reg.showNotification(title,o);return}}catch(e){}
  try{const n=new Notification(title,o);n.onclick=()=>{window.focus();if(rm)open(rm);n.close()}}catch(e){}}
+let UN={},bnT=null,DMBG={};
+function title(){const n=Object.values(UN).reduce((a,b)=>a+b,0);document.title=(n?"("+n+") ":"")+"The Ark"}
+function clearUN(){if(!document.hasFocus())return;UN[room]=0;title();list()}
+function banner(t,body,rm){
+ let b=$("banner");if(!b){b=el("div");b.id="banner";document.body.append(b)}
+ b.textContent="";const h=el("div",null,t);h.style.fontWeight="600";const x=el("div","who",body);x.style.margin="2px 0 0";b.append(h,x);b.style.display="block";
+ b.onclick=()=>{b.style.display="none";if(rm)open(rm)};clearTimeout(bnT);bnT=setTimeout(()=>{b.style.display="none"},6000)}
 function onNew(m){
  if(!m||m.sender===myId||(MOD[myId]&&MOD[myId].kicked))return;
- if(room===m.room&&document.hasFocus())return;
+ const focused=document.hasFocus()&&!document.hidden;
+ if(room===m.room&&focused)return;
+ UN[m.room]=(UN[m.room]||0)+1;title();list();
  const dm=m.room!=="general";
  const body=m.kind==="image"?"📷 Photo":m.kind==="voice"?"🎤 Voice message":m.kind==="file"?"📄 "+(m.name||"File"):(m.text||"");
- showN(dm?name(m.sender):"The Ark",dm?body:name(m.sender)+": "+body,m.room,m.room)}
+ const t=dm?name(m.sender):"The Ark",x=dm?body:name(m.sender)+": "+body;
+ if(focused){if(S.inapp){banner(t,x,m.room);ping()}}else showN(t,x,m.room,m.room)}
+const RING={classic:{p:[[480,0,.4],[620,0,.4],[480,.6,.4],[620,.6,.4]],cy:3000},digital:{p:[[880,0,.12],[880,.2,.12],[880,.4,.12],[1175,.6,.3]],cy:2500},gentle:{p:[[523,0,.3],[659,.25,.3],[784,.5,.5]],cy:3000},retro:{p:[[1000,0,.08],[1300,.1,.08],[1000,.2,.08],[1300,.3,.08]],cy:1800},pulse:{p:[[440,0,.25],[440,.35,.25]],cy:2200}};
+const RINGN={classic:"Classic",digital:"Digital",gentle:"Gentle",retro:"Retro",pulse:"Pulse",none:"Silent"};
+let ringT2=null,ringAu=null,ringCtx=null;
+const vib=()=>{if(S.rvib!==false&&navigator.vibrate)try{navigator.vibrate([500,300,500,300,500])}catch(e){}};
+function tone(a,f,t,d,vol){const o=a.createOscillator(),g=a.createGain();o.type="sine";o.frequency.value=f;o.connect(g);g.connect(a.destination);const st=a.currentTime+t;g.gain.setValueAtTime(0,st);g.gain.linearRampToValueAtTime(vol,st+.02);g.gain.exponentialRampToValueAtTime(.0001,st+d);o.start(st);o.stop(st+d+.05)}
+function stopRing(){clearInterval(ringT2);ringT2=null;if(ringAu){ringAu.pause();ringAu=null}if(ringCtx){try{ringCtx.close()}catch(e){}ringCtx=null}if(navigator.vibrate)try{navigator.vibrate(0)}catch(e){}}
+function startRing(back,force){stopRing();
+ const v=S.rvol==null?.8:S.rvol,n=S.ring||"classic";
+ if(!back&&!force&&S.ringOn===false)return;
+ if(!back&&n==="none")return;
+ if(!back&&n==="custom"&&S.rcustom){ringAu=new Audio(S.rcustom);ringAu.loop=true;ringAu.volume=v;ringAu.play().catch(()=>{});vib();ringT2=setInterval(vib,3000);return}
+ const R=back?{p:[[425,0,1],[480,0,1]],cy:4000}:(RING[n]||RING.classic);
+ try{ringCtx=new (window.AudioContext||window.webkitAudioContext)();if(ringCtx.resume)ringCtx.resume();
+  const a=ringCtx,play=()=>{R.p.forEach(([f,t,d])=>tone(a,f,t,d,(back?.1:.28)*v));if(!back)vib()};
+  play();ringT2=setInterval(play,R.cy)}catch(e){}}
+function missed(from){if(document.hasFocus()&&!document.hidden)return;showN("Missed call",name(from)+" tried to call you","call-missed","")}
 function bind(){
  $("send").onclick=sendText;
  $("txt").onkeydown=e=>{if(e.key==="Enter"&&S.enter&&!e.shiftKey){e.preventDefault();sendText()}};
